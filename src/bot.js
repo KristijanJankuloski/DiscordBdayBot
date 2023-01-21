@@ -4,7 +4,7 @@ const { Client, GatewayIntentBits, REST, Routes, PermissionFlagsBits } = require
 const cron = require('node-cron');
 const express = require('express');
 const app = express();
-const port = process.env.APP_PORT;
+const port = process.env.PORT;
 
 app.get("/", (req, res)=>{
   res.send({ status: "OK" });
