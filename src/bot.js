@@ -71,7 +71,7 @@ async function addGuildConfig(guildId, channelId, roleId){
 }
 
 async function findBday(Inmonth, Inday){
-  let bdays = await BirthDay.findOne({month:Inmonth, day:Inday});
+  let bdays = await BirthDay.find({month:Inmonth, day:Inday});
   return bdays;
 }
 
@@ -153,7 +153,7 @@ client.on('ready', () =>{
   console.log("Client Logged in");
   cron.schedule('01 00 00 * * *', async () =>{
     let today = new Date();
-    let data = await findBday(today.getMonth()+1, today.getDate());
+    let dataList = await findBday(today.getMonth()+1, today.getDate());
     // Find and remove all member that have a b-day role active
     let allActiveRoles = await ActiveRoles.find();
     if(allActiveRoles.length > 0){
@@ -166,19 +166,21 @@ client.on('ready', () =>{
       }
     }
     // Check if there is a b-day on this day
-    if(!data){
+    if(dataList.length === 0){
       console.log("No bday today");
       return;
     }
     // IF there is add the role to the user and Send a message
-    const guild = client.guilds.cache.get(data.guildId);
-    let config = await findGuildConf(data.guildId);
-    guild.members.fetch(data.userid).then(member => {
-      const bdayRole = guild.roles.cache.find(role => role.id === config.roleId);
-      member.roles.add(bdayRole);
-      addActiveRole(config.guildId, data.userid, config.roleId);
-    }).catch(console.error);
-    client.channels.cache.get(config.channelId).send(`@everyone wish <@${data.userid}> a happy Birthday`);
+    for(let data of dataList){
+      const guild = client.guilds.cache.get(data.guildId);
+      let config = await findGuildConf(data.guildId);
+      guild.members.fetch(data.userid).then(member => {
+        const bdayRole = guild.roles.cache.find(role => role.id === config.roleId);
+        member.roles.add(bdayRole);
+        addActiveRole(config.guildId, data.userid, config.roleId);
+      }).catch(console.error);
+      client.channels.cache.get(config.channelId).send(`@everyone wish <@${data.userid}> a happy Birthday`);
+    }
   });
 });
 
@@ -191,12 +193,18 @@ client.on('interactionCreate', async interaction => {
       let newDate = interaction.options.getString('date').split('/');
       let user = interaction.options.getUser('user')?? interaction.user;
       let guild = interaction.guild.id;
+      await interaction.deferReply();
       await addBirthday(guild, user.id, user.tag, Number(newDate[1]), Number(newDate[0]));
-      await interaction.reply(`BirthDay for <@${interaction.user.id}> is set to ${Number(newDate[0])}/${Number(newDate[1])}`);
+      await interaction.followUp(`BirthDay for <@${user.id}> is set to ${Number(newDate[0])}/${Number(newDate[1])}`);
     }
 
     // CONFIGURATION COMMAND
     if (interaction.commandName === 'config'){
+      await interaction.deferReply();
+      if(!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)){
+        await interaction.followUp("You do not have permissions for this command");
+        return;
+      }
       let temp = interaction.options.getString('channel').split('');
       temp.shift();
       temp.shift();
@@ -210,14 +218,15 @@ client.on('interactionCreate', async interaction => {
       roleId = tempRole.join('');
       guildId = interaction.guild.id;
       await addGuildConfig(guildId, channelId, roleId);
-      await interaction.reply(`Message channel has been set to <#${channelId}> and role to <@&${roleId}>`);
+      await interaction.followUp(`Message channel has been set to <#${channelId}> and role to <@&${roleId}>`);
     }
 
     // REMOVING B-DAY COMMAND
     if (interaction.commandName === 'delete'){
       let user = interaction.options.getUser('user')?? interaction.user;
+      await interaction.deferReply()
       await deleteBday(user.id);
-      await interaction.reply(`Birthday for <@${user.id}> has beed deleted`);
+      await interaction.followUp(`Birthday for <@${user.id}> has beed deleted`);
     }
 });
 
