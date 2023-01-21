@@ -2,6 +2,13 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const { Client, GatewayIntentBits, REST, Routes, PermissionFlagsBits } = require('discord.js');
 const cron = require('node-cron');
+const express = require('express');
+const app = express();
+const port = 8080;
+
+app.get("/", (req, res)=>{
+  res.send({ status: "OK" });
+});
 
 const client = new Client({intents: [GatewayIntentBits.Guilds]});
 
@@ -231,3 +238,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN);
+app.listen(port, ()=>{console.log(`App listenning on port: ${port}`)});
